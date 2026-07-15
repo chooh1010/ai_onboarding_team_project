@@ -91,10 +91,15 @@ def load_json_file(db: Session, file_path: Path) -> int:
 
 
 def seed_all_json_files(db: Session, data_directory: Path) -> int:
-    files = sorted(data_directory.glob("광주_전라권_*.json"))
+    files = sorted(
+        file_path
+        for file_path in data_directory.glob("*.json")
+        if file_path.is_file()
+    )
+
     if not files:
         raise FileNotFoundError(
-            f"{data_directory.resolve()}에 광주_전라권_*.json 파일이 없습니다."
+            f"{data_directory.resolve()}에 JSON 파일이 없습니다."
         )
     return sum(load_json_file(db, file_path) for file_path in files)
 
