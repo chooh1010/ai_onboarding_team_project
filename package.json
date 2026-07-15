@@ -1,0 +1,20 @@
+{
+  "name": "ai_onboarding_team_project2",
+  "version": "1.0.0",
+  "description": "한국관광공사 TourAPI 4.0 기반 관광 콘텐츠 검색, 익명 커뮤니티, 관광 안내 챗봇을 제공하는 FastAPI + Vue 3 프로젝트입니다.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://lab.ssafy.com/chooh1010/ai_onboarding_team_project2.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
