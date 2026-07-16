@@ -214,14 +214,6 @@ onMounted(load)
       </div>
     </section>
 
-    <section class="section weather-home-section" aria-label="광주·전라권 현재 날씨">
-      <div class="container">
-        <div class="weather-home-slot">
-          <WeatherMap />
-        </div>
-      </div>
-    </section>
-
     <!-- Region cards -->
     <section class="section region-section">
       <div class="container">
