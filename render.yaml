@@ -32,3 +32,9 @@ services:
 
       - key: OPENAI_API_KEY
         sync: false
+
+      - key: OPENWEATHER_API_KEY
+        sync: false
+
+      - key: VITE_KAKAO_MAP_APP_KEY
+        sync: false
