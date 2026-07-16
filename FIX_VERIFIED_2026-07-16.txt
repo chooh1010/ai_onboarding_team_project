@@ -1,0 +1,21 @@
+날씨·카카오 지도 수정본 검증 파일
+
+확인할 핵심 변경사항:
+1. backend/app/api/weather.py
+   - 존재하지 않던 GWANGJU_REGIONS 사용 제거
+   - GWANGJU_JEONBUK_JEONNAM_REGIONS 사용
+2. backend/app/api/config.py
+   - GET /api/config/public 제공
+3. backend/app/main.py
+   - weather.router와 config.router 등록
+4. frontend/src/views/HomeView.vue
+   - <WeatherMap /> 실제 렌더링
+5. frontend/src/components/content/KakaoMap.vue
+   - 빌드타임 키가 없으면 /api/config/public에서 KAKAO_MAP_APP_KEY 조회
+   - 실패 메시지를 화면에 표시
+6. render.yaml
+   - KAKAO_MAP_APP_KEY 환경변수 사용
+
+검증 결과:
+- Backend pytest: 10 passed
+- Frontend vite production build: success

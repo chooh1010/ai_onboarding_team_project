@@ -214,6 +214,14 @@ onMounted(load)
       </div>
     </section>
 
+    <section class="section weather-home-section" aria-label="광주·전라권 현재 날씨">
+      <div class="container">
+        <div class="weather-home-slot">
+          <WeatherMap />
+        </div>
+      </div>
+    </section>
+
     <!-- Region cards -->
     <section class="section region-section">
       <div class="container">
@@ -385,8 +393,8 @@ onMounted(load)
 }
 
 .weather-home-slot {
-  width: fit-content;
-  max-width: 300px;
+  width: 100%;
+  max-width: 720px;
   margin-left: 0;
   margin-right: auto;
   padding-left: 2px;

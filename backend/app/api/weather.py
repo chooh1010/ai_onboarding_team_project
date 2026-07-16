@@ -1,28 +1,32 @@
-from datetime import datetime, timedelta
-
-from fastapi import APIRouter, HTTPException
-from app.core.config import get_settings
-import httpx
 import asyncio
+from datetime import datetime, timedelta, timezone
+
+import httpx
+from fastapi import APIRouter, HTTPException
+
+from app.core.config import get_settings
 
 router = APIRouter(prefix="/api/weather", tags=["weather"])
 
-# Jeonnam (South Jeolla Province) major cities coordinates
-JEONNAM_REGIONS = {
+# 서비스가 제공하는 광주·전라권 11개 주요 지역 좌표
+GWANGJU_JEONBUK_JEONNAM_REGIONS = {
+    "광주": (35.1595, 126.8526),
+    "담양": (35.3214, 126.9882),
+    "나주": (35.0159, 126.7108),
+    "화순": (35.0645, 126.9865),
+    "장성": (35.3019, 126.7849),
     "여수": (34.7604, 127.6622),
-    "순천": (34.9505, 127.4895),
-    "담양": (35.3428, 126.9915),
-    "나주": (34.9993, 126.7040),
-    "화순": (35.2303, 126.9770),
-    "장성": (35.3268, 126.7750),
-    "해남": (34.5500, 126.6000),
-    "진도": (34.3800, 126.2500),
+    "해남": (34.5734, 126.5992),
+    "진도": (34.4868, 126.2635),
+    "순천": (34.9505, 127.4872),
+    "전주": (35.8242, 127.1480),
+    "남원": (35.4164, 127.3904),
 }
 
 CACHE_TTL = timedelta(minutes=15)
 _weather_cache = {
-    "current": {"expires_at": datetime.min, "data": None},
-    "forecast": {"expires_at": datetime.min, "data": None},
+    "current": {"expires_at": datetime.min.replace(tzinfo=timezone.utc), "data": None},
+    "forecast": {"expires_at": datetime.min.replace(tzinfo=timezone.utc), "data": None},
 }
 
 OPENWEATHER_CURRENT_URL = "https://api.openweathermap.org/data/2.5/weather"
@@ -30,16 +34,20 @@ OPENWEATHER_FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"
 OPENWEATHER_AIR_URL = "https://api.openweathermap.org/data/2.5/air_pollution"
 
 
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def _check_cache(key: str):
     entry = _weather_cache[key]
-    if entry["data"] is not None and entry["expires_at"] > datetime.utcnow():
+    if entry["data"] is not None and entry["expires_at"] > _now_utc():
         return entry["data"]
     return None
 
 
 def _set_cache(key: str, data):
     _weather_cache[key]["data"] = data
-    _weather_cache[key]["expires_at"] = datetime.utcnow() + CACHE_TTL
+    _weather_cache[key]["expires_at"] = _now_utc() + CACHE_TTL
 
 
 def _parse_weather_state(weather_list: list[dict]) -> str:
@@ -54,13 +62,21 @@ def _get_air_quality_flag(data: dict) -> bool:
     return pm25 >= 35
 
 
+def _upstream_error_message(response: httpx.Response) -> str:
+    try:
+        body = response.json()
+        return str(body.get("message") or response.text)
+    except ValueError:
+        return response.text
+
+
 def _group_daily_forecast(items: list[dict]) -> list[dict]:
     grouped: dict[str, dict] = {}
     for item in items:
         timestamp = item.get("dt")
         if timestamp is None:
             continue
-        day = datetime.utcfromtimestamp(timestamp).strftime("%Y-%m-%d")
+        day = datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%Y-%m-%d")
         bucket = grouped.setdefault(
             day,
             {
@@ -85,9 +101,9 @@ def _group_daily_forecast(items: list[dict]) -> list[dict]:
         elif conditions and conditions[0].get("main") in ["Rain", "Snow", "Thunderstorm"]:
             bucket["hasRain"] = True
 
-    weekday_labels = ["月", "火", "水", "木", "金", "土", "日"]
-
+    weekday_labels = ["월", "화", "수", "목", "금", "토", "일"]
     forecast = []
+
     for day_label, data in grouped.items():
         date_obj = datetime.strptime(day_label, "%Y-%m-%d")
         condition = "Clear"
@@ -104,13 +120,10 @@ def _group_daily_forecast(items: list[dict]) -> list[dict]:
                 "_sort_date": date_obj,
             }
         )
+
     sorted_forecast = sorted(forecast, key=lambda item: item["_sort_date"])
     return [
-        {
-            key: value
-            for key, value in item.items()
-            if key != "_sort_date"
-        }
+        {key: value for key, value in item.items() if key != "_sort_date"}
         for item in sorted_forecast
     ]
 
@@ -118,38 +131,35 @@ def _group_daily_forecast(items: list[dict]) -> list[dict]:
 @router.get("/current")
 async def current_region_weather():
     settings = get_settings()
-    key = settings.openweather_api_key
+    key = settings.openweather_api_key.strip()
     if not key:
-        raise HTTPException(status_code=503, detail="OpenWeather API key not configured")
+        raise HTTPException(status_code=503, detail="OPENWEATHER_API_KEY가 설정되지 않았습니다.")
 
     cached = _check_cache("current")
     if cached is not None:
         return cached
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        tasks = []
-        for region, (lat, lon) in GWANGJU_REGIONS.items():
-            params = {
-                "lat": lat,
-                "lon": lon,
-                "units": "metric",
-                "appid": key,
-            }
-            tasks.append(client.get(OPENWEATHER_CURRENT_URL, params=params))
-
-        responses = await asyncio.gather(*tasks)
+    async with httpx.AsyncClient(timeout=12.0) as client:
+        tasks = [
+            client.get(
+                OPENWEATHER_CURRENT_URL,
+                params={"lat": lat, "lon": lon, "units": "metric", "appid": key},
+            )
+            for lat, lon in GWANGJU_JEONBUK_JEONNAM_REGIONS.values()
+        ]
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
 
     results = []
-    for region, resp in zip(GWANGJU_REGIONS.keys(), responses):
-        if resp.status_code != 200:
-            try:
-                err = resp.json()
-                message = err.get("message") or resp.text
-            except ValueError:
-                message = resp.text
-            raise HTTPException(status_code=502, detail=f"Failed to fetch current weather for {region}: {message}")
+    failures = []
+    for region, response in zip(GWANGJU_JEONBUK_JEONNAM_REGIONS.keys(), responses):
+        if isinstance(response, Exception):
+            failures.append(f"{region}: {response}")
+            continue
+        if response.status_code != 200:
+            failures.append(f"{region}: {_upstream_error_message(response)}")
+            continue
 
-        data = resp.json()
+        data = response.json()
         results.append(
             {
                 "region_name": region,
@@ -158,23 +168,28 @@ async def current_region_weather():
             }
         )
 
+    if not results:
+        detail = failures[0] if failures else "OpenWeather 응답을 받지 못했습니다."
+        raise HTTPException(status_code=502, detail=f"현재 날씨 조회 실패: {detail}")
+
     _set_cache("current", results)
     return results
 
 
 @router.get("/forecast")
-async def weekly_forecast(area: str = "전라남도"):
+async def weekly_forecast(area: str = "광주·전라권"):
+    del area  # 현재는 권역 대표 좌표를 사용한다.
     settings = get_settings()
-    key = settings.openweather_api_key
+    key = settings.openweather_api_key.strip()
     if not key:
-        raise HTTPException(status_code=503, detail="OpenWeather API key not configured")
+        raise HTTPException(status_code=503, detail="OPENWEATHER_API_KEY가 설정되지 않았습니다.")
 
     cached = _check_cache("forecast")
     if cached is not None:
         return cached
 
-    # Center of South Jeolla Province (near Yeosu/Suncheon area)
-    lat, lon = 34.8, 127.0
+    # 광주·전라권 중간 지점의 대표 예보
+    lat, lon = 35.15, 127.0
     async with httpx.AsyncClient(timeout=15.0) as client:
         forecast_req = client.get(
             OPENWEATHER_FORECAST_URL,
@@ -187,26 +202,19 @@ async def weekly_forecast(area: str = "전라남도"):
         forecast_resp, air_resp = await asyncio.gather(forecast_req, air_req)
 
     if forecast_resp.status_code != 200:
-        try:
-            err = forecast_resp.json()
-            message = err.get("message") or forecast_resp.text
-        except ValueError:
-            message = forecast_resp.text
-        raise HTTPException(status_code=502, detail=f"Failed to fetch forecast data: {message}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"예보 조회 실패: {_upstream_error_message(forecast_resp)}",
+        )
 
     if air_resp.status_code != 200:
-        try:
-            err = air_resp.json()
-            message = err.get("message") or air_resp.text
-        except ValueError:
-            message = air_resp.text
-        raise HTTPException(status_code=502, detail=f"Failed to fetch air quality data: {message}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"대기질 조회 실패: {_upstream_error_message(air_resp)}",
+        )
 
-    forecast_data = forecast_resp.json()
-    air_data = air_resp.json()
-
-    days = _group_daily_forecast(forecast_data.get("list", []))[:7]
-    has_dust = _get_air_quality_flag(air_data)
+    days = _group_daily_forecast(forecast_resp.json().get("list", []))[:5]
+    has_dust = _get_air_quality_flag(air_resp.json())
 
     result = {"items": [{**day, "has_dust": has_dust} for day in days]}
     _set_cache("forecast", result)

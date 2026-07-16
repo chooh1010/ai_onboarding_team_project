@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
-from app.api import areas, chat, contents, images, posts, sources
+from app.api import areas, chat, config, contents, images, posts, sources, weather
 from app.core.config import get_settings
 from app.core.database import (
     Base,
@@ -66,7 +66,8 @@ app.include_router(posts.router)
 app.include_router(chat.router)
 app.include_router(sources.router)
 app.include_router(images.router)
-app.include_router(__import__('app.api.weather', fromlist=['router']).router)
+app.include_router(weather.router)
+app.include_router(config.router)
 
 
 @app.get("/health", tags=["health"])

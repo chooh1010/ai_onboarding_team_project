@@ -6,7 +6,7 @@
           <i class="bi bi-cloud-sun fs-4"></i>
         </div>
         <div>
-          <h3 class="fw-bold m-0 text-dark-blue">전라남도 권역 주간 예보</h3>
+          <h3 class="fw-bold m-0 text-dark-blue">광주·전라권 5일 예보</h3>
         </div>
       </div>
       <button class="btn btn-primary px-3 rounded-pill fw-bold" @click="$router.push('/')">
@@ -66,7 +66,7 @@
       </div>
     </div>
 
-    <h5 class="fw-bold text-dark-blue mb-3"><i class="bi bi-calendar3 text-primary me-2"></i> 7일간의 상세 기상 예보</h5>
+    <h5 class="fw-bold text-dark-blue mb-3"><i class="bi bi-calendar3 text-primary me-2"></i> 5일간의 상세 기상 예보</h5>
     <div class="row row-cols-2 row-cols-md-4 row-cols-lg-7 g-3">
       <div v-for="(day, index) in weeklyForecast" :key="index" class="col">
         <div class="card h-100 border-0 shadow-sm text-center forecast-card rounded-4 bg-white" :class="{ 'today-card': index === 0 }">

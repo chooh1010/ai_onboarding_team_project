@@ -84,21 +84,40 @@ BACKEND_CORS_ORIGINS=http://localhost:5173
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5-mini
 OPENWEATHER_API_KEY=
+KAKAO_MAP_APP_KEY=
 ```
 
 프론트엔드:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000
+# 선택 사항: 비워두면 백엔드 KAKAO_MAP_APP_KEY를 사용
+VITE_KAKAO_MAP_APP_KEY=
 ```
 
-> `OPENWEATHER_API_KEY`는 OpenWeather의 무료 또는 유료 API 키입니다. 이 값이 없으면 `/api/weather/forecast`와 `/api/weather/current` 요청이 동작하지 않습니다.
+> `OPENWEATHER_API_KEY`가 없으면 날씨 API가 동작하지 않습니다.
+> `KAKAO_MAP_APP_KEY`에는 카카오 **JavaScript 키**를 넣고, 카카오 개발자 콘솔에 실제 프론트엔드 배포 도메인을 등록해야 합니다.
+> Netlify/Render Static Site에서 `VITE_API_BASE_URL`을 바꾼 뒤에는 프론트엔드를 다시 빌드·배포해야 합니다.
+
+## 6. 배포 확인 주소
+
+백엔드 배포 후 아래 주소를 브라우저에서 직접 확인합니다.
+
+```text
+https://<백엔드-주소>/health
+https://<백엔드-주소>/api/config/public
+https://<백엔드-주소>/api/weather/current
+```
+
+- `/api/config/public`의 `openweatherConfigured`가 `true`여야 합니다.
+- `kakaoMapAppKey`가 비어 있으면 Render의 `KAKAO_MAP_APP_KEY`를 확인합니다.
+- 프론트엔드에는 `VITE_API_BASE_URL=https://<백엔드-주소>`가 필요합니다.
 
 ## 주의
 
 과제 명세에 맞춰 커뮤니티 수정·삭제 비밀번호를 평문으로 저장합니다. 실제 서비스에서는 반드시 Argon2 또는 bcrypt 같은 단방향 해시를 적용해야 합니다.
 
-축제 개최일, 모범음식점 지정 여부, 여행코스 상세 경로, 메뉴·가격·영업시간은 현재 데이터에 없으므로 서비스와 챗봇이 추측하지 않습니다.
+축제 시작일·종료일은 축제공연행사 JSON의 값을 사용합니다. 모범음식점 지정 여부, 여행코스 상세 경로, 메뉴·가격·영업시간처럼 데이터에 없는 정보는 서비스와 챗봇이 추측하지 않습니다.
 
 ## 데이터 출처
 
