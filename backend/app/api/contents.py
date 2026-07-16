@@ -32,9 +32,21 @@ def list_contents(
     sigungu_code: str | None = Query(default=None, alias="sigunguCode"),
     keyword: str | None = None,
     has_image: bool | None = Query(default=None, alias="hasImage"),
+    query_start_date: str | None = Query(
+        default=None,
+        alias="queryStartDate",
+        pattern=r"^\d{8}$",
+        description="조회 기간 시작일(YYYYMMDD)",
+    ),
+    query_end_date: str | None = Query(
+        default=None,
+        alias="queryEndDate",
+        pattern=r"^\d{8}$",
+        description="조회 기간 종료일(YYYYMMDD)",
+    ),
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=100)] = 12,
-    sort: Literal["title", "-title", "newest", "type"] = "title",
+    sort: Literal["title", "-title", "newest", "type", "event-date"] = "title",
     service: ContentService = Depends(get_service),
 ):
     return service.list_contents(
@@ -43,6 +55,8 @@ def list_contents(
         sigungu_code=sigungu_code,
         keyword=keyword,
         has_image=has_image,
+        query_start_date=query_start_date,
+        query_end_date=query_end_date,
         page=page,
         size=size,
         sort=sort,

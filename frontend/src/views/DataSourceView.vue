@@ -85,7 +85,7 @@ onMounted(async () => {
             <p>챗봇도 아래 내용을 추측해서 답변하지 않습니다.</p>
           </div>
           <ul>
-            <li><strong>축제 일정</strong><span>시작일·종료일, 행사 기간과 운영 시간</span></li>
+            <li><strong>축제 상세 운영 정보</strong><span>일부 행사의 운영 시간·세부 프로그램·예매 정보는 비어 있을 수 있음</span></li>
             <li><strong>음식점 상세</strong><span>모범음식점 여부, 메뉴, 가격, 영업시간과 휴무일</span></li>
             <li><strong>여행코스 경로</strong><span>구성 장소, 방문 순서, 총 거리와 이동 시간</span></li>
             <li><strong>감성 추천 근거</strong><span>상세 소개문을 전제로 하는 데이트·가족 여행 추천</span></li>

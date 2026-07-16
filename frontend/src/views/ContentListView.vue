@@ -1,9 +1,10 @@
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { onMounted, reactive, ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { contentApi } from '../api/contentApi'
 import ContentFilter from '../components/content/ContentFilter.vue'
 import ContentList from '../components/content/ContentList.vue'
+import KakaoMap from '../components/content/KakaoMap.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,6 +18,9 @@ const response = ref({
   totalPages: 0,
   totalElements: 0,
 })
+// 별도: 맵에 전달할 항목(최대 100개)
+const mapItems = ref([])
+
 const filters = reactive({
   contentTypeId: '',
   areaCode: '',
@@ -35,7 +39,7 @@ function syncFromRoute() {
     keyword: route.query.keyword || '',
     hasImage: route.query.hasImage === 'true' ? true : null,
     page: Number(route.query.page || 1),
-    size: 12,
+    size: Number(route.query.size ?? filters.size),
   })
 }
 
@@ -44,13 +48,27 @@ async function load() {
   error.value = ''
 
   try {
-    response.value = await contentApi.list(filters)
+    // 리스트(페이지네이션) 응답과 맵용(최대 100개) 응답을 병렬로 요청
+    const listParams = { ...filters }
+    const mapParams = { ...filters, size: 100 }
+
+    const [listResp, mapResp] = await Promise.all([
+      contentApi.list(listParams),
+      contentApi.list(mapParams),
+    ])
+
+    response.value = listResp
+    mapItems.value = mapResp.items || []
   } catch (loadError) {
     error.value = loadError.message
   } finally {
     loading.value = false
   }
 }
+
+const showMapLimitNotice = computed(() => {
+  return (response.value.totalElements || 0) > (mapItems.value?.length || 0)
+})
 
 function search() {
   filters.page = 1
@@ -61,7 +79,7 @@ function search() {
         && value !== false
         && value !== null
         && value !== undefined
-      )),
+      ))
     ),
   })
 }
@@ -126,10 +144,16 @@ watch(
             <template v-else>총 {{ response.totalElements.toLocaleString() }}개의 장소</template>
           </strong>
         </div>
-        <span v-if="!loading" class="result-page-info">
-          {{ Math.max(response.page, 1) }} / {{ Math.max(response.totalPages, 1) }} 페이지
-        </span>
+        <!-- 상단의 페이지 텍스트(예: 1 / 117 페이지)는 제거되었습니다 -->
       </div>
+
+      <!-- 맵에는 mapItems 전달 (최대 100개) -->
+      <KakaoMap :items="mapItems" />
+
+      <!-- map 제한 안내: 총 결과가 mapItems보다 많을 때만 표시 -->
+      <p v-if="!loading && showMapLimitNotice" class="map-limit-note" style="margin:8px 0 18px;color:var(--muted);font-size:13px;">
+        지도에는 최대 100개까지만 표시됩니다. (총 {{ response.totalElements.toLocaleString() }}개 중 {{ mapItems.length }}개 표시)
+      </p>
 
       <div v-if="loading" class="content-loading" aria-live="polite">
         <span />

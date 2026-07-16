@@ -36,6 +36,11 @@ class ContentSummary(CamelModel):
     copyright_code: str
     area_code: str
     sigungu_code: str
+    event_start_date: str = ""
+    event_end_date: str = ""
+    event_place: str = ""
+    playtime: str = ""
+    use_time_festival: str = ""
     distance_km: float | None = None
 
 
@@ -77,5 +82,23 @@ class ContentDetail(CamelModel):
     copyright_code: str
     area_code: str
     sigungu_code: str
+    event_start_date: str = ""
+    event_end_date: str = ""
+    event_place: str = ""
+    playtime: str = ""
+    program: str = ""
+    subevent: str = ""
+    sponsor1: str = ""
+    sponsor1_tel: str = ""
+    sponsor2: str = ""
+    sponsor2_tel: str = ""
+    event_homepage: str = ""
+    booking_place: str = ""
+    age_limit: str = ""
+    festival_grade: str = ""
+    place_info: str = ""
+    spend_time_festival: str = ""
+    discount_info_festival: str = ""
+    use_time_festival: str = ""
     category_codes: CategoryCodes
     source: ContentSource

@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     backend_cors_origins: str = "http://localhost:5173"
     openai_api_key: str = ""
     openai_model: str = "gpt-5-mini"
+    openweather_api_key: str = ""
     data_directory: Path = Field(default=Path("app/data/raw"))
 
     model_config = SettingsConfigDict(

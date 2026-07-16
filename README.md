@@ -83,6 +83,7 @@ DATABASE_URL=sqlite:///./regional_tour.db
 BACKEND_CORS_ORIGINS=http://localhost:5173
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5-mini
+OPENWEATHER_API_KEY=
 ```
 
 프론트엔드:
@@ -90,6 +91,8 @@ OPENAI_MODEL=gpt-5-mini
 ```env
 VITE_API_BASE_URL=http://localhost:8000
 ```
+
+> `OPENWEATHER_API_KEY`는 OpenWeather의 무료 또는 유료 API 키입니다. 이 값이 없으면 `/api/weather/forecast`와 `/api/weather/current` 요청이 동작하지 않습니다.
 
 ## 주의
 

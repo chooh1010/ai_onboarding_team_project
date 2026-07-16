@@ -33,8 +33,12 @@ class TourContent(Base):
     mapx: Mapped[str] = mapped_column(String(50), default="", nullable=False)
     mapy: Mapped[str] = mapped_column(String(50), default="", nullable=False)
     mlevel: Mapped[str] = mapped_column(String(10), default="", nullable=False)
-    area_code: Mapped[str] = mapped_column(String(10), index=True, default="", nullable=False)
-    sigungu_code: Mapped[str] = mapped_column(String(10), index=True, default="", nullable=False)
+    area_code: Mapped[str] = mapped_column(
+        String(10), index=True, default="", nullable=False
+    )
+    sigungu_code: Mapped[str] = mapped_column(
+        String(10), index=True, default="", nullable=False
+    )
     ldong_regn_cd: Mapped[str] = mapped_column(String(20), default="", nullable=False)
     ldong_signgu_cd: Mapped[str] = mapped_column(String(20), default="", nullable=False)
     cat1: Mapped[str] = mapped_column(String(30), default="", nullable=False)
@@ -48,6 +52,32 @@ class TourContent(Base):
     copyright_code: Mapped[str] = mapped_column(String(20), default="", nullable=False)
     source_created_time: Mapped[str] = mapped_column(String(20), default="", nullable=False)
     source_modified_time: Mapped[str] = mapped_column(String(20), default="", nullable=False)
+
+    # 축제공연행사(contentTypeId=15) 전용 상세 일정 필드.
+    # 다른 콘텐츠 유형에서는 빈 문자열로 저장한다.
+    event_start_date: Mapped[str] = mapped_column(
+        String(8), index=True, default="", nullable=False
+    )
+    event_end_date: Mapped[str] = mapped_column(
+        String(8), index=True, default="", nullable=False
+    )
+    event_place: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    playtime: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    program: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    subevent: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    sponsor1: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    sponsor1_tel: Mapped[str] = mapped_column(String(100), default="", nullable=False)
+    sponsor2: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    sponsor2_tel: Mapped[str] = mapped_column(String(100), default="", nullable=False)
+    event_homepage: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    booking_place: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    age_limit: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    festival_grade: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    place_info: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    spend_time_festival: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    discount_info_festival: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    use_time_festival: Mapped[str] = mapped_column(Text, default="", nullable=False)
+
     raw_json: Mapped[str] = mapped_column(Text, nullable=False)
     imported_at: Mapped[datetime] = mapped_column(
         DateTime, default=utc_now, nullable=False
@@ -59,4 +89,10 @@ Index(
     TourContent.content_type_id,
     TourContent.area_code,
     TourContent.sigungu_code,
+)
+Index(
+    "idx_tour_content_event_period",
+    TourContent.content_type_id,
+    TourContent.event_start_date,
+    TourContent.event_end_date,
 )

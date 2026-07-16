@@ -1,5 +1,3 @@
-from warnings import filters
-
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -38,6 +36,8 @@ class ContentRepository:
         sigungu_code: str | None = None,
         keyword: str | None = None,
         has_image: bool | None = None,
+        query_start_date: str | None = None,
+        query_end_date: str | None = None,
         page: int = 1,
         size: int = 12,
         sort: str = "title",
@@ -56,10 +56,27 @@ class ContentRepository:
                     TourContent.title.ilike(pattern),
                     TourContent.addr1.ilike(pattern),
                     TourContent.addr2.ilike(pattern),
+                    TourContent.event_place.ilike(pattern),
                 )
             )
         if has_image is True:
             filters.append(TourContent.first_image != "")
+
+        # 행사 기간과 조회 기간이 하루라도 겹치면 검색 결과에 포함한다.
+        if query_start_date:
+            filters.extend(
+                [
+                    TourContent.event_end_date != "",
+                    TourContent.event_end_date >= query_start_date,
+                ]
+            )
+        if query_end_date:
+            filters.extend(
+                [
+                    TourContent.event_start_date != "",
+                    TourContent.event_start_date <= query_end_date,
+                ]
+            )
 
         count_statement = select(func.count(TourContent.id)).where(*filters)
         total = self.db.scalar(count_statement) or 0
@@ -69,6 +86,7 @@ class ContentRepository:
             "-title": TourContent.title.desc(),
             "newest": TourContent.source_modified_time.desc(),
             "type": TourContent.content_type_id.asc(),
+            "event-date": TourContent.event_start_date.asc(),
         }.get(sort, TourContent.title.asc())
 
         statement = (

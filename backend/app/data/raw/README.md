@@ -12,3 +12,5 @@
 - 광주_전라권_축제공연행사.json
 
 원본 파일은 Git 저장소 공개 범위와 재배포 정책을 확인한 뒤 커밋하세요.
+
+축제공연행사 JSON에는 `eventstartdate`, `eventenddate`, `eventplace`, `playtime` 등 detailIntro2 일정 필드가 포함됩니다.

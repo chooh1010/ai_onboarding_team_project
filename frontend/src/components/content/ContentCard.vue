@@ -11,6 +11,20 @@ const props = defineProps({
 })
 
 const failed = ref(false)
+
+function formatTourDate(value) {
+  if (!/^\d{8}$/.test(value || '')) return ''
+  return `${Number(value.slice(4, 6))}월 ${Number(value.slice(6, 8))}일`
+}
+
+const eventPeriod = computed(() => {
+  const start = formatTourDate(props.item.eventStartDate)
+  const end = formatTourDate(props.item.eventEndDate)
+  if (!start) return ''
+  if (!end || start === end) return start
+  return `${start} ~ ${end}`
+})
+
 const image = computed(() => (
   failed.value
     ? ''
@@ -52,6 +66,7 @@ const areaLabel = computed(() => getAreaLabel(
             {{ item.title }}
           </RouterLink>
         </h3>
+        <p v-if="eventPeriod" class="card-address">행사 기간 · {{ eventPeriod }}</p>
         <p class="card-address">{{ item.address || '주소 정보가 제공되지 않았습니다.' }}</p>
       </div>
 

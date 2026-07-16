@@ -13,16 +13,35 @@ const loading = ref(true)
 const error = ref('')
 const failed = ref(false)
 
+function formatTourDate(value) {
+  if (!/^\d{8}$/.test(value || '')) return ''
+  const year = Number(value.slice(0, 4))
+  const month = Number(value.slice(4, 6))
+  const day = Number(value.slice(6, 8))
+  return `${year}년 ${month}월 ${day}일`
+}
+
+const eventPeriod = computed(() => {
+  const start = formatTourDate(item.value?.eventStartDate)
+  const end = formatTourDate(item.value?.eventEndDate)
+  if (!start) return ''
+  if (!end || start === end) return start
+  return `${start} ~ ${end}`
+})
+
 const image = computed(() => (
   failed.value
     ? ''
     : resolveImageUrl(item.value?.firstImage || item.value?.firstImage2)
 ))
-const mapLink = computed(() => (
-  item.value
-    ? `https://www.google.com/maps?q=${item.value.latitude},${item.value.longitude}`
-    : '#'
-))
+// 카카오 지도 링크로 변경
+const mapLink = computed(() => {
+  if (!item.value) return '#'
+  const lat = item.value.latitude
+  const lng = item.value.longitude
+  const title = encodeURIComponent(item.value.title || '장소')
+  return `https://map.kakao.com/link/map/${title},${lat},${lng}`
+})
 const areaLabel = computed(() => getAreaLabel(
   item.value?.areaCode,
   item.value?.sigunguCode,
@@ -149,6 +168,42 @@ onMounted(load)
             <div>
               <dt>주소</dt>
               <dd>{{ fullAddress }}</dd>
+            </div>
+            <div v-if="eventPeriod">
+              <dt>행사 기간</dt>
+              <dd>{{ eventPeriod }}</dd>
+            </div>
+            <div v-if="item.eventPlace">
+              <dt>행사 장소</dt>
+              <dd>{{ item.eventPlace }}</dd>
+            </div>
+            <div v-if="item.playtime">
+              <dt>행사 시간</dt>
+              <dd>{{ item.playtime }}</dd>
+            </div>
+            <div v-if="item.program">
+              <dt>프로그램</dt>
+              <dd>{{ item.program }}</dd>
+            </div>
+            <div v-if="item.subevent">
+              <dt>부대 행사</dt>
+              <dd>{{ item.subevent }}</dd>
+            </div>
+            <div v-if="item.useTimeFestival">
+              <dt>이용 요금</dt>
+              <dd>{{ item.useTimeFestival }}</dd>
+            </div>
+            <div v-if="item.ageLimit">
+              <dt>관람 연령</dt>
+              <dd>{{ item.ageLimit }}</dd>
+            </div>
+            <div v-if="item.bookingPlace">
+              <dt>예매처</dt>
+              <dd>{{ item.bookingPlace }}</dd>
+            </div>
+            <div v-if="item.eventHomepage">
+              <dt>행사 홈페이지</dt>
+              <dd>{{ item.eventHomepage }}</dd>
             </div>
             <div v-if="item.tel">
               <dt>전화번호</dt>

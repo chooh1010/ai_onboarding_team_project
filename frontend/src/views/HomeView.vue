@@ -1,10 +1,12 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import WeatherMap from '../components/WeatherMap.vue'
 import { useRouter } from 'vue-router'
 import { contentApi } from '../api/contentApi'
 import { postApi } from '../api/postApi'
 import { resolveImageUrl } from '../api/http'
 import ContentList from '../components/content/ContentList.vue'
+import { applySpacing } from '../utils/spacing'
 
 const router = useRouter()
 const keyword = ref('')
@@ -84,7 +86,19 @@ async function load() {
       food: food.items,
       lodging: lodging.items,
     }
-    posts.value = postResponse.items
+    posts.value = postResponse.items.map(p => ({
+      ...p,
+      title: applySpacing(p.title),
+      // 필요하면 summary/contents도 적용
+      // summary: applySpacing(p.summary)
+    }));
+
+    // featured 값 설정 예시 (각 아이템의 title 보정)
+    featured.value = {
+      tourism: tourism.items.map(i => ({ ...i, title: applySpacing(i.title) })),
+      food:    food.items.map(i => ({ ...i, title: applySpacing(i.title) })),
+      lodging: lodging.items.map(i => ({ ...i, title: applySpacing(i.title) })),
+    };
   } catch (error) {
     console.error('홈 화면 데이터를 불러오지 못했습니다.', error)
   }
@@ -120,6 +134,7 @@ onMounted(load)
           <span class="scenery-mountain scenery-mountain-front" />
         </div>
       </div>
+
       <div class="hero-overlay" />
 
       <div class="container home-hero-inner">
@@ -169,10 +184,8 @@ onMounted(load)
           <span class="hero-place-number">오늘의 남도</span>
           <strong>{{ heroPlace?.title || '광주·전라의 아름다운 풍경' }}</strong>
           <p>{{ heroPlace?.address || '지역의 자연과 문화를 천천히 둘러보세요.' }}</p>
-          <RouterLink
-            v-if="heroPlace"
-            :to="`/contents/${heroPlace.contentId}`"
-          >
+
+          <RouterLink v-if="heroPlace" :to="`/contents/${heroPlace.contentId}`">
             이 장소 자세히 보기 <span aria-hidden="true">→</span>
           </RouterLink>
           <RouterLink v-else to="/explore">
@@ -201,6 +214,7 @@ onMounted(load)
       </div>
     </section>
 
+    <!-- Region cards -->
     <section class="section region-section">
       <div class="container">
         <div class="section-heading split-heading">
@@ -208,10 +222,6 @@ onMounted(load)
             <span class="section-label">지역으로 떠나기</span>
             <h2>남도의 서로 다른 표정을<br />지역별로 만나보세요.</h2>
           </div>
-          <p>
-            주소 문자열이 아닌 관광 데이터의 지역 코드를 기준으로 찾아<br class="desktop-only" />
-            주소가 없는 여행코스도 안전하게 지역별 탐색이 가능합니다.
-          </p>
         </div>
 
         <div class="region-grid">
@@ -233,6 +243,7 @@ onMounted(load)
       </div>
     </section>
 
+    <!-- Category / featured lists -->
     <section class="section category-section">
       <div class="container">
         <div class="section-heading">
@@ -300,7 +311,7 @@ onMounted(load)
       <div class="container">
         <div class="section-heading">
           <div>
-            <span class="section-label">편안한 머묾</span>
+            <span class="section-label">편안하게 머물다 가기</span>
             <h2>하루를 천천히 마무리할 곳</h2>
           </div>
           <RouterLink to="/explore?contentTypeId=32" class="text-link">
@@ -366,3 +377,18 @@ onMounted(load)
     </section>
   </div>
 </template>
+
+<style scoped>
+.weather-home-section {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.weather-home-slot {
+  width: fit-content;
+  max-width: 300px;
+  margin-left: 0;
+  margin-right: auto;
+  padding-left: 2px;
+}
+</style>

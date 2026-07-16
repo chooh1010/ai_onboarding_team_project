@@ -31,8 +31,8 @@ export function getAreaLabel(areaCode, sigunguCode, address = '') {
   if (label) return label
 
   const normalized = String(address || '').trim()
-  if (!normalized) return '광주·전라권'
+  if (!normalized) return '전라남도'
 
   const match = normalized.match(/(광주|전주|여수|담양|나주|화순|장성|해남|진도|순천|남원)[^\s]*/)
-  return match?.[0] || '광주·전라권'
+  return match?.[0] || '전라남도'
 }

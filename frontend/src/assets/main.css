@@ -2218,7 +2218,7 @@ textarea:focus-visible {
 
 .form-page-intro {
   position: sticky;
-  top: 116px;
+  top: auto;
 }
 
 .form-page-intro h1 {
@@ -2287,6 +2287,7 @@ textarea:focus-visible {
   display: grid;
   grid-template-columns: 0.8fr 1.2fr;
   gap: 18px;
+  align-items: start;
 }
 
 .form-notice {
@@ -3628,3 +3629,13 @@ textarea:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+/* Typography weight adjustments */
+h1 { font-weight: 900; }
+h2 { font-weight: 800; }
+h3 { font-weight: 700; }
+h4, h5, h6 { font-weight: 600; }
+body, p, li, input, button, small { font-weight: 400; }
+.section-label, .eyebrow, .chat-toggle-copy strong { font-weight: 800; }
+
+/* Ensure specific components keep intended emphasis */
+.hero-copy h1, .section-heading h2, .community-home-intro h2 { font-weight: 900; }

@@ -22,6 +22,9 @@ class ChatResult(CamelModel):
     title: str
     address: str = ""
     image_url: str = ""
+    event_start_date: str = ""
+    event_end_date: str = ""
+    event_place: str = ""
 
 
 class ChatSource(CamelModel):

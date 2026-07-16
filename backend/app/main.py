@@ -6,7 +6,12 @@ from sqlalchemy import select
 
 from app.api import areas, chat, contents, images, posts, sources
 from app.core.config import get_settings
-from app.core.database import Base, SessionLocal, engine
+from app.core.database import (
+    Base,
+    SessionLocal,
+    engine,
+    ensure_tour_content_event_columns,
+)
 from app.models import DataSource
 
 
@@ -36,6 +41,7 @@ def seed_data_source() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_tour_content_event_columns()
     seed_data_source()
     yield
 
@@ -60,6 +66,7 @@ app.include_router(posts.router)
 app.include_router(chat.router)
 app.include_router(sources.router)
 app.include_router(images.router)
+app.include_router(__import__('app.api.weather', fromlist=['router']).router)
 
 
 @app.get("/health", tags=["health"])

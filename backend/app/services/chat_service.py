@@ -1,5 +1,8 @@
+import calendar
 import re
+from datetime import date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
@@ -19,6 +22,7 @@ CONTENT_TYPES = {
     "문화": "14",
     "축제": "15",
     "공연": "15",
+    "행사": "15",
     "여행코스": "25",
     "코스": "25",
     "레포츠": "28",
@@ -94,10 +98,13 @@ class ChatService:
     def _tool_handlers(self):
         async def search_tour_contents(**kwargs):
             limit = kwargs.pop("limit", 5)
+            has_date_filter = bool(
+                kwargs.get("query_start_date") or kwargs.get("query_end_date")
+            )
             response = self.content_service.list_contents(
                 page=1,
                 size=limit,
-                sort="title",
+                sort="event-date" if has_date_filter else "title",
                 **kwargs,
             )
             return response.model_dump(by_alias=True)
@@ -171,15 +178,22 @@ class ChatService:
             )
             return ChatResponse(answer=answer, intent="COMMUNITY_SEARCH", results=results)
 
+        date_range = self._extract_date_range(message)
+        keyword = self._extract_keyword(message)
+        query_start_date = date_range[0].strftime("%Y%m%d") if date_range else None
+        query_end_date = date_range[1].strftime("%Y%m%d") if date_range else None
+
         response = self.content_service.list_contents(
             content_type_id=content_type_id,
             area_code=area_code,
             sigungu_code=sigungu_code,
-            keyword=None,
+            keyword=keyword or None,
             has_image=None,
+            query_start_date=query_start_date,
+            query_end_date=query_end_date,
             page=1,
             size=5,
-            sort="title",
+            sort="event-date" if date_range else "title",
         )
         results = [
             ChatResult(
@@ -188,6 +202,9 @@ class ChatService:
                 title=item.title,
                 address=item.address,
                 image_url=item.thumbnail_url,
+                event_start_date=item.event_start_date,
+                event_end_date=item.event_end_date,
+                event_place=item.event_place,
             )
             for item in response.items
         ]
@@ -196,31 +213,51 @@ class ChatService:
             "광주·전라권",
         )
         type_name = next(
-            (name for name, code in CONTENT_TYPES.items() if code == content_type_id and len(name) >= 3),
+            (
+                name
+                for name, code in CONTENT_TYPES.items()
+                if code == content_type_id and len(name) >= 3
+            ),
             "관광 콘텐츠",
         )
-        answer = (
-            f"{location_name}의 {type_name} {len(results)}곳을 찾았습니다."
-            if results
-            else "조건에 맞는 관광 콘텐츠를 찾지 못했습니다."
-        )
+
+        if content_type_id == "15":
+            if date_range:
+                period_label = self._format_date_range(*date_range)
+                answer = (
+                    f"{period_label}에 진행되는 {location_name}의 축제·행사 "
+                    f"{len(results)}건을 찾았습니다."
+                    if results
+                    else f"{period_label}에 진행되는 {location_name}의 축제·행사를 찾지 못했습니다."
+                )
+            else:
+                answer = (
+                    f"{location_name}의 축제·행사 {len(results)}건을 찾았습니다."
+                    if results
+                    else "조건에 맞는 축제·행사를 찾지 못했습니다."
+                )
+            if results:
+                details = []
+                for result in results:
+                    event_period = self._format_event_period(
+                        result.event_start_date,
+                        result.event_end_date,
+                    )
+                    place = result.event_place or result.address or "장소 정보 없음"
+                    details.append(f"- {result.title}: {event_period} · {place}")
+                answer += "\n" + "\n".join(details)
+        else:
+            answer = (
+                f"{location_name}의 {type_name} {len(results)}곳을 찾았습니다."
+                if results
+                else "조건에 맞는 관광 콘텐츠를 찾지 못했습니다."
+            )
+
         answer += "\n\n출처: 한국관광공사 TourAPI 4.0 / 라이선스: 공공누리 제3유형"
         return ChatResponse(answer=answer, intent="TOUR_CONTENT_SEARCH", results=results)
 
     @staticmethod
     def _limitation_response(message: str) -> ChatResponse | None:
-        festival_time_words = ["이번 주말", "오늘", "이번 달", "몇 월", "언제", "기간", "일정", "진행 중"]
-        if "축제" in message and any(word in message for word in festival_time_words):
-            text = (
-                "현재 제공된 데이터에는 축제 개최 시작일과 종료일이 없어 "
-                "요청한 기간에 열리는 축제를 확인할 수 없습니다. "
-                "대신 등록된 축제의 이름, 위치, 연락처는 안내할 수 있습니다."
-            )
-            return ChatResponse(
-                answer=text,
-                intent="LIMITATION",
-                limitations=["축제 시작일·종료일 필드 없음"],
-            )
         if "모범음식점" in message or "위생등급" in message:
             text = (
                 "현재 제공된 음식점 데이터에는 모범음식점 지정 여부나 위생등급이 "
@@ -231,7 +268,9 @@ class ChatService:
                 intent="LIMITATION",
                 limitations=["모범음식점 지정 여부·위생등급 필드 없음"],
             )
-        if "코스" in message and any(word in message for word in ["순서", "경로", "이동 시간", "총 거리", "교통수단"]):
+        if "코스" in message and any(
+            word in message for word in ["순서", "경로", "이동 시간", "총 거리", "교통수단"]
+        ):
             text = (
                 "현재 여행코스 데이터에는 코스 구성 장소, 방문 순서, 이동 시간, "
                 "총 거리와 교통수단이 없어 상세 경로를 만들 수 없습니다."
@@ -256,7 +295,19 @@ class ChatService:
         for district in ["광산구", "남구", "동구", "북구", "서구"]:
             if district in message and ("광주" in message or district == "광산구"):
                 return AREAS[district]
-        for keyword in ["담양", "나주", "화순", "장성", "여수", "해남", "진도", "순천", "전주", "남원", "광주"]:
+        for keyword in [
+            "담양",
+            "나주",
+            "화순",
+            "장성",
+            "여수",
+            "해남",
+            "진도",
+            "순천",
+            "전주",
+            "남원",
+            "광주",
+        ]:
             if keyword in message:
                 return AREAS[keyword]
         return None, None
@@ -264,13 +315,125 @@ class ChatService:
     @staticmethod
     def _extract_keyword(message: str) -> str:
         cleaned = message
+        cleaned = re.sub(r"\d{4}\s*년\s*\d{1,2}\s*월(?:\s*\d{1,2}\s*일)?", " ", cleaned)
+        cleaned = re.sub(r"\d{4}[./-]\d{1,2}[./-]\d{1,2}", " ", cleaned)
+        cleaned = re.sub(r"\d{1,2}\s*월\s*\d{1,2}\s*일", " ", cleaned)
+        cleaned = re.sub(r"\d{1,2}\s*월", " ", cleaned)
         stopwords = list(CONTENT_TYPES) + list(AREAS) + [
-            "커뮤니티", "게시글", "관련", "글", "찾아줘", "검색해줘", "알려줘", "추천해줘"
+            "커뮤니티",
+            "게시글",
+            "관련",
+            "글",
+            "찾아줘",
+            "검색해줘",
+            "알려줘",
+            "추천해줘",
+            "언제",
+            "일정",
+            "기간",
+            "오늘",
+            "이번 주말",
+            "이번 달",
+            "진행 중",
+            "진행 중인",
+            "열리는",
+            "개최되는",
+            "있는",
         ]
         for word in sorted(stopwords, key=len, reverse=True):
             cleaned = cleaned.replace(word, " ")
         cleaned = re.sub(r"[^0-9A-Za-z가-힣]+", " ", cleaned)
         return " ".join(cleaned.split())
+
+    @staticmethod
+    def _extract_date_range(
+        message: str,
+        today: date | None = None,
+    ) -> tuple[date, date] | None:
+        today = today or datetime.now(ZoneInfo("Asia/Seoul")).date()
+
+        full_dates = re.findall(
+            r"(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일",
+            message,
+        )
+        parsed_full = ChatService._valid_dates(full_dates)
+        if parsed_full:
+            return min(parsed_full), max(parsed_full)
+
+        iso_dates = re.findall(
+            r"(?<!\d)(\d{4})[./-](\d{1,2})[./-](\d{1,2})(?!\d)",
+            message,
+        )
+        parsed_iso = ChatService._valid_dates(iso_dates)
+        if parsed_iso:
+            return min(parsed_iso), max(parsed_iso)
+
+        month_days = re.findall(
+            r"(?<!\d)(\d{1,2})\s*월\s*(\d{1,2})\s*일",
+            message,
+        )
+        parsed_month_days = ChatService._valid_dates(
+            [(str(today.year), month, day) for month, day in month_days]
+        )
+        if parsed_month_days:
+            return min(parsed_month_days), max(parsed_month_days)
+
+        year_month = re.search(r"(\d{4})\s*년\s*(\d{1,2})\s*월", message)
+        if year_month:
+            year, month = map(int, year_month.groups())
+            if 1 <= month <= 12:
+                last_day = calendar.monthrange(year, month)[1]
+                return date(year, month, 1), date(year, month, last_day)
+
+        if "오늘" in message or "진행 중" in message:
+            return today, today
+
+        if "이번 주말" in message:
+            days_until_saturday = (5 - today.weekday()) % 7
+            start = today + timedelta(days=days_until_saturday)
+            return start, start + timedelta(days=1)
+
+        if "이번 달" in message:
+            last_day = calendar.monthrange(today.year, today.month)[1]
+            return date(today.year, today.month, 1), date(today.year, today.month, last_day)
+
+        bare_month = re.search(r"(?<!\d)(\d{1,2})\s*월", message)
+        if bare_month and "몇 월" not in message:
+            month = int(bare_month.group(1))
+            if 1 <= month <= 12:
+                last_day = calendar.monthrange(today.year, month)[1]
+                return date(today.year, month, 1), date(today.year, month, last_day)
+
+        return None
+
+    @staticmethod
+    def _valid_dates(values: list[tuple[str, str, str]]) -> list[date]:
+        parsed: list[date] = []
+        for year, month, day in values:
+            try:
+                parsed.append(date(int(year), int(month), int(day)))
+            except ValueError:
+                continue
+        return parsed
+
+    @staticmethod
+    def _format_date(value: date) -> str:
+        return f"{value.year}년 {value.month}월 {value.day}일"
+
+    @classmethod
+    def _format_date_range(cls, start: date, end: date) -> str:
+        if start == end:
+            return cls._format_date(start)
+        return f"{cls._format_date(start)}부터 {cls._format_date(end)}까지"
+
+    @classmethod
+    def _format_event_period(cls, start: str, end: str) -> str:
+        try:
+            start_date = datetime.strptime(start, "%Y%m%d").date()
+            end_date = datetime.strptime(end, "%Y%m%d").date()
+        except (TypeError, ValueError):
+            return "행사 기간 정보 없음"
+        return cls._format_date_range(start_date, end_date)
 
     @staticmethod
     def _results_from_tool(tool_name: str | None, result: Any | None) -> list[ChatResult]:
@@ -285,6 +448,9 @@ class ChatService:
                     title=item.get("title", ""),
                     address=item.get("address", ""),
                     image_url=item.get("thumbnailUrl", ""),
+                    event_start_date=item.get("eventStartDate", ""),
+                    event_end_date=item.get("eventEndDate", ""),
+                    event_place=item.get("eventPlace", ""),
                 )
                 for item in items
             ]

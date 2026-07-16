@@ -8,6 +8,8 @@ import PostWriteView from '../views/PostWriteView.vue'
 import PostEditView from '../views/PostEditView.vue'
 import DataSourceView from '../views/DataSourceView.vue'
 
+import WeatherView from '../views/WeatherView.vue'
+
 const routes = [
   { path: '/', component: HomeView },
   { path: '/explore', component: ContentListView },
@@ -17,6 +19,8 @@ const routes = [
   { path: '/community/:postId', component: PostDetailView },
   { path: '/community/:postId/edit', component: PostEditView },
   { path: '/data-source', component: DataSourceView },
+  { path: '/weather', name: 'weather', component: WeatherView }
+
 ]
 
 export default createRouter({
